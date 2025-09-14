@@ -25,7 +25,10 @@ with st.sidebar:
 if selected == "Home":
     st.title("🌍 Welcome to the African Stories App ✨")
     st.write("Preserving African culture through storytelling.")
-    st.image("https://upload.wikimedia.org/wikipedia/commons/0/0c/African_storytelling.jpg", use_column_width=True)
+    st.image(
+        "https://upload.wikimedia.org/wikipedia/commons/0/0c/African_storytelling.jpg", 
+        use_container_width=True
+    )
 
 elif selected == "Stories":
     st.title("📖 Explore Stories")
