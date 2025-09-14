@@ -107,8 +107,8 @@ elif selected == "Quiz":
         st.success(f"🎉 You scored {score} out of {len(questions)}!")
 
 elif selected == "African Languages":
-    st.title("🗣️ Learn African Languages")
-    st.write("Discover greetings and proverbs from different African languages.")
+    st.title("🗣️ African Languages")
+    st.write("Explore greetings, proverbs, and folktales in African languages.")
 
     language = st.selectbox("Choose a language:", ["Yoruba", "Swahili", "Hausa", "Zulu", "Igbo"])
 
@@ -117,30 +117,35 @@ elif selected == "African Languages":
         st.write("👋 Hello: **Bawo ni**")
         st.write("🙏 Thank you: **E se**")
         st.write("💡 Proverb: **Ìjángbọ̀n kì í tán nílẹ́ ayé.** (Conflict never ends in the world.)")
-    
+        st.write("📖 Folktale: Once upon a time, a tortoise tricked the birds to attend a feast in the sky...")
+
     elif language == "Swahili":
         st.subheader("Swahili (East Africa)")
         st.write("👋 Hello: **Hujambo**")
         st.write("🙏 Thank you: **Asante**")
         st.write("💡 Proverb: **Haraka haraka haina baraka.** (Hurry hurry has no blessings.)")
-    
+        st.write("📖 Folktale: Long ago, the hare tricked the mighty lion in a small coastal village...")
+
     elif language == "Hausa":
         st.subheader("Hausa (West Africa)")
         st.write("👋 Hello: **Sannu**")
         st.write("🙏 Thank you: **Nagode**")
         st.write("💡 Proverb: **Komai nisan jifa, ƙasa zai dawo.** (No matter how far you throw it, it will land on the ground.)")
-    
+        st.write("📖 Folktale: The hyena and the hare once set out on a journey, but greed betrayed the hyena...")
+
     elif language == "Zulu":
         st.subheader("Zulu (South Africa)")
         st.write("👋 Hello: **Sawubona**")
         st.write("🙏 Thank you: **Ngiyabonga**")
         st.write("💡 Proverb: **Umuntu ngumuntu ngabantu.** (A person is a person through other people.)")
-    
+        st.write("📖 Historical Story: King Shaka Zulu transformed the Zulu kingdom into a powerful nation...")
+
     elif language == "Igbo":
         st.subheader("Igbo (Nigeria)")
         st.write("👋 Hello: **Kedu**")
         st.write("🙏 Thank you: **Imela**")
         st.write("💡 Proverb: **Otu osisi adịghị eme ọhịa.** (One tree does not make a forest.)")
+        st.write("📖 Folktale: The tortoise, known for his cunning, once tricked the birds into giving him feathers to fly...")
 
 elif selected == "About":
     st.title("ℹ️ About This App")
