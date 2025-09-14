@@ -1,112 +1,112 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
-import torch
-import gradio as gr
-from gtts import gTTS
-import os
+import streamlit as st
+from streamlit_option_menu import option_menu
 
-# -------------------
-# Load models
-# -------------------
-# Translation model (NLLB-200)
-nllb_model_name = "facebook/nllb-200-distilled-600M"
-nllb_tokenizer = AutoTokenizer.from_pretrained(nllb_model_name)
-nllb_model = AutoModelForSeq2SeqLM.from_pretrained(nllb_model_name)
+# App settings
+st.set_page_config(page_title="African Stories App", layout="wide")
 
-# Chat model (GPT-OSS-20B)
-chat_model_name = "openai/gpt-oss-20b"
-chat_tokenizer = AutoTokenizer.from_pretrained(chat_model_name)
-chat_model = AutoModelForCausalLM.from_pretrained(
-    chat_model_name,
-    torch_dtype=torch.float16,
-    device_map="auto"
-)
+# In-memory storage
+if "user_stories" not in st.session_state:
+    st.session_state.user_stories = []
 
-# -------------------
-# Translation function
-# -------------------
-def translate(text, src_lang, tgt_lang):
-    nllb_tokenizer.src_lang = src_lang
-    inputs = nllb_tokenizer(text, return_tensors="pt")
-    translated_tokens = nllb_model.generate(
-        **inputs,
-        forced_bos_token_id=nllb_tokenizer.lang_code_to_id[tgt_lang]
-    )
-    return nllb_tokenizer.decode(translated_tokens[0], skip_special_tokens=True)
+if "quiz_score" not in st.session_state:
+    st.session_state.quiz_score = 0
 
-# -------------------
-# Chat function (GPT-OSS)
-# -------------------
-def chat_with_bot(user_input, history=[]):
-    history.append({"role": "user", "content": user_input})
-
-    inputs = chat_tokenizer.apply_chat_template(
-        history,
-        add_generation_prompt=True,
-        tokenize=True,
-        return_tensors="pt"
-    ).to(chat_model.device)
-
-    outputs = chat_model.generate(
-        **inputs,
-        max_new_tokens=120,
-        do_sample=True,
-        top_p=0.9,
-        temperature=0.7
-    )
-    response = chat_tokenizer.decode(
-        outputs[0][inputs["input_ids"].shape[-1]:],
-        skip_special_tokens=True
+# Sidebar menu
+with st.sidebar:
+    selected = option_menu(
+        "African Stories", 
+        ["Home", "Stories", "Add Your Story", "Quiz", "About"],
+        icons=["house", "book", "plus-circle", "question-circle", "info-circle"],
+        menu_icon="cast",
+        default_index=0,
     )
 
-    history.append({"role": "assistant", "content": response})
-    return response, history
+# Page content
+if selected == "Home":
+    st.title("🌍 Welcome to the African Stories App ✨")
+    st.write("Preserving African culture through storytelling.")
+    st.image("https://upload.wikimedia.org/wikipedia/commons/0/0c/African_storytelling.jpg", use_column_width=True)
 
-# -------------------
-# Combined chatbot logic
-# -------------------
-def main_chat(user_input, history, mode, direction):
-    if mode == "Translation":
-        if direction == "English → Yoruba":
-            response = translate(user_input, "eng_Latn", "yor_Latn")
+elif selected == "Stories":
+    st.title("📖 Explore Stories")
+    story_type = st.selectbox("Pick a category:", ["Folktales", "Proverbs", "Historical Stories", "User Submitted"])
+
+    if story_type == "Folktales":
+        st.subheader("🦁 Folktale: The Lion and the Hare")
+        st.write("Once upon a time in an African village, the clever hare outsmarted the mighty lion...")
+    
+    elif story_type == "Proverbs":
+        st.subheader("💡 Yoruba Proverb")
+        st.write("“Bí a bá rí bí ọ̀ràn, a kìí fọ́ ẹsẹ̀ méjì wọ inú rẹ̀.” (When there is trouble, one should not rush in with both feet.)")
+    
+    elif story_type == "Historical Stories":
+        st.subheader("⏳ Story of Queen Amina of Zazzau")
+        st.write("Queen Amina was a fierce Hausa warrior queen of the city-state Zazzau...")
+    
+    elif story_type == "User Submitted":
+        st.subheader("📝 Stories from Our Community")
+        if st.session_state.user_stories:
+            for idx, story in enumerate(st.session_state.user_stories, 1):
+                st.markdown(f"**{idx}. {story['title']}** — *{story['author']}*")
+                st.write(story['content'])
+                st.markdown("---")
         else:
-            response = translate(user_input, "yor_Latn", "eng_Latn")
-    else:  # Chat Mode
-        response, history = chat_with_bot(user_input, history)
+            st.info("No user stories yet. Be the first to add one in 'Add Your Story'!")
 
-    history.append((user_input, response))
-    return history, history, tts_output(response)
+elif selected == "Add Your Story":
+    st.title("✍️ Share Your Story")
+    with st.form("story_form"):
+        title = st.text_input("Story Title")
+        author = st.text_input("Your Name")
+        content = st.text_area("Write your story here...")
+        submitted = st.form_submit_button("Submit")
 
-# -------------------
-# Text-to-Speech
-# -------------------
-def tts_output(text, lang="en"):
-    if any(ch in text for ch in "ẹọṣáíóú"):  # crude check for Yoruba letters
-        lang = "yo"
-    tts = gTTS(text=text, lang=lang)
-    filename = "response.mp3"
-    tts.save(filename)
-    return filename
+        if submitted:
+            if title and author and content:
+                st.session_state.user_stories.append(
+                    {"title": title, "author": author, "content": content}
+                )
+                st.success("🎉 Your story has been added!")
+            else:
+                st.error("Please fill in all fields.")
 
-# -------------------
-# Gradio UI
-# -------------------
-with gr.Blocks() as demo:
-    gr.Markdown("## 🗣️ Yoruba Machine Translation & Chatbot")
+elif selected == "Quiz":
+    st.title("❓ African Stories Quiz")
+    st.write("Test your knowledge of African culture, history, and proverbs!")
 
-    with gr.Row():
-        mode = gr.Radio(["Chat", "Translation"], label="Select Mode", value="Translation")
-        direction = gr.Radio(["English → Yoruba", "Yoruba → English"], label="Translation Direction", value="English → Yoruba")
+    questions = [
+        {
+            "q": "Who was Queen Amina of Zazzau?",
+            "options": ["A Yoruba goddess", "A Hausa warrior queen", "A Swahili storyteller", "An Igbo trader"],
+            "answer": "A Hausa warrior queen"
+        },
+        {
+            "q": "What animal is often portrayed as clever in African folktales?",
+            "options": ["Lion", "Elephant", "Hare", "Crocodile"],
+            "answer": "Hare"
+        },
+        {
+            "q": "What does the Yoruba proverb mean: 'Bí a bá rí bí ọ̀ràn, a kìí fọ́ ẹsẹ̀ méjì wọ inú rẹ̀'?",
+            "options": ["Rush into trouble", "Be cautious in trouble", "Avoid storytelling", "Respect elders"],
+            "answer": "Be cautious in trouble"
+        }
+    ]
 
-    chatbot_ui = gr.Chatbot(label="Chat History")
-    msg = gr.Textbox(label="Type or speak...", placeholder="Enter your message...")
-    clear = gr.Button("Clear History")
+    score = 0
+    for i, q in enumerate(questions):
+        st.subheader(f"Q{i+1}: {q['q']}")
+        choice = st.radio("Choose your answer:", q["options"], key=f"q{i}")
+        if choice == q["answer"]:
+            score += 1
 
-    with gr.Row():
-        voice_in = gr.Audio(source="microphone", type="filepath", label="🎤 Speak")
-        tts_out = gr.Audio(label="🔊 Bot Voice", type="filepath")
+    if st.button("Submit Quiz"):
+        st.session_state.quiz_score = score
+        st.success(f"🎉 You scored {score} out of {len(questions)}!")
 
-    # Connect functions
-    msg.submit(main_chat, [msg, chatbot_ui, mode, direction], [chatbot_ui, chatbot_ui, tts_out])
-    clear.click(lambda: None, None, chatbot_ui, queue=False)
-
-demo.launch()
+elif selected == "About":
+    st.title("ℹ️ About This App")
+    st.write("""
+        This app is designed to showcase African culture through stories, folktales, 
+        proverbs, and history. Users can contribute their own stories and even 
+        test their knowledge through a fun quiz!
+    """)
