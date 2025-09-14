@@ -2,64 +2,65 @@ import streamlit as st
 import pandas as pd
 import os
 
-# App settings
-st.set_page_config(page_title="Health Communication Data Curation", layout="wide")
+# File to store submissions
+DATA_FILE = "taboo_curation.csv"
 
-# Initialize storage
-if "data" not in st.session_state:
-    st.session_state.data = pd.DataFrame(columns=["ID", "Language", "Original Text", "English Translation", "Speaker Role", "Context", "Topic"])
+# Load existing data if file exists
+if os.path.exists(DATA_FILE):
+    df = pd.read_csv(DATA_FILE)
+else:
+    df = pd.DataFrame(columns=["Language", "Forbidden_Practice", "Meaning", "Curator"])
 
-# Sidebar menu
-menu = ["Home", "Contribute Data", "View Data", "Download"]
-choice = st.sidebar.selectbox("Menu", menu)
+# Sidebar navigation
+st.sidebar.title("📑 Cultural Taboo Curation")
+page = st.sidebar.radio("Navigate", ["Submit Entry", "Review Data", "Download Data"])
 
-if choice == "Home":
-    st.title("🩺 Health Communication Data Curation")
-    st.write("""
-        This app collects examples of health communication in African languages.
-        You can contribute doctor–patient conversations, health campaign messages, or translations.
-        The goal is to build a dataset for discourse analysis and AI healthcare applications.
-    """)
+st.title("🗣️ Yoruba & Igbo Cultural Taboo Curation Platform")
+st.write("Contribute knowledge of cultural taboos and their meanings in Yoruba and Igbo communities.")
 
-elif choice == "Contribute Data":
-    st.title("✍️ Contribute Health Communication Data")
+if page == "Submit Entry":
+    st.subheader("✍️ Submit a Cultural Taboo")
+    
+    language = st.selectbox("Language", ["Yoruba", "Igbo"])
+    forbidden_practice = st.text_area("Describe the forbidden practice (e.g., 'Pregnant woman walking in the sun')")
+    meaning = st.text_area("Meaning or cultural explanation in English")
+    curator = st.text_input("Your Name (optional)")
 
-    with st.form("curation_form"):
-        lang = st.selectbox("Language", ["Yoruba", "Swahili", "Hausa", "Igbo", "Zulu", "Other"])
-        original = st.text_area("Original Text (local language)")
-        translation = st.text_area("English Translation")
-        role = st.selectbox("Speaker Role", ["Doctor", "Patient", "Campaign Voice", "Other"])
-        context = st.selectbox("Context", ["Clinic", "Hospital", "Radio", "Poster", "Conversation", "Other"])
-        topic = st.text_input("Topic (e.g., Malaria, HIV, Maternal Health)")
-        submitted = st.form_submit_button("Save Entry")
+    if st.button("Submit"):
+        if forbidden_practice.strip() == "":
+            st.warning("Forbidden practice cannot be empty.")
+        else:
+            new_row = pd.DataFrame({
+                "Language": [language],
+                "Forbidden_Practice": [forbidden_practice],
+                "Meaning": [meaning],
+                "Curator": [curator]
+            })
+            df = pd.concat([df, new_row], ignore_index=True)
+            df.to_csv(DATA_FILE, index=False)
+            st.success("✅ Entry submitted successfully!")
 
-        if submitted:
-            if original and translation:
-                new_entry = {
-                    "ID": len(st.session_state.data) + 1,
-                    "Language": lang,
-                    "Original Text": original,
-                    "English Translation": translation,
-                    "Speaker Role": role,
-                    "Context": context,
-                    "Topic": topic
-                }
-                st.session_state.data = pd.concat([st.session_state.data, pd.DataFrame([new_entry])], ignore_index=True)
-                st.success("✅ Entry saved!")
-            else:
-                st.error("Please provide both the original text and translation.")
-
-elif choice == "View Data":
-    st.title("📊 Collected Data")
-    if not st.session_state.data.empty:
-        st.dataframe(st.session_state.data, use_container_width=True)
+elif page == "Review Data":
+    st.subheader("🔍 Review Submitted Taboos")
+    if df.empty:
+        st.info("No entries available yet.")
     else:
-        st.info("No data collected yet. Go to 'Contribute Data' to add.")
+        st.dataframe(df)
 
-elif choice == "Download":
-    st.title("⬇️ Download Dataset")
-    if not st.session_state.data.empty:
-        csv = st.session_state.data.to_csv(index=False)
-        st.download_button("Download as CSV", csv, file_name="health_communication_dataset.csv", mime="text/csv")
-    else:
+elif page == "Download Data":
+    st.subheader("📥 Download Curated Dataset")
+    if df.empty:
         st.info("No data to download yet.")
+    else:
+        st.download_button(
+            label="Download as CSV",
+            data=df.to_csv(index=False).encode('utf-8'),
+            file_name="cultural_taboo_curation.csv",
+            mime="text/csv"
+        )
+        st.download_button(
+            label="Download as JSON",
+            data=df.to_json(orient="records", force_ascii=False, indent=2),
+            file_name="cultural_taboo_curation.json",
+            mime="application/json"
+        )
