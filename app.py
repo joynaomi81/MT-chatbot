@@ -15,8 +15,8 @@ if "quiz_score" not in st.session_state:
 with st.sidebar:
     selected = option_menu(
         "African Stories", 
-        ["Home", "Stories", "Add Your Story", "Quiz", "About"],
-        icons=["house", "book", "plus-circle", "question-circle", "info-circle"],
+        ["Home", "Stories", "Add Your Story", "Quiz", "African Languages", "About"],
+        icons=["house", "book", "plus-circle", "question-circle", "languages", "info-circle"],
         menu_icon="cast",
         default_index=0,
     )
@@ -106,10 +106,46 @@ elif selected == "Quiz":
         st.session_state.quiz_score = score
         st.success(f"🎉 You scored {score} out of {len(questions)}!")
 
+elif selected == "African Languages":
+    st.title("🗣️ Learn African Languages")
+    st.write("Discover greetings and proverbs from different African languages.")
+
+    language = st.selectbox("Choose a language:", ["Yoruba", "Swahili", "Hausa", "Zulu", "Igbo"])
+
+    if language == "Yoruba":
+        st.subheader("Yoruba (Nigeria)")
+        st.write("👋 Hello: **Bawo ni**")
+        st.write("🙏 Thank you: **E se**")
+        st.write("💡 Proverb: **Ìjángbọ̀n kì í tán nílẹ́ ayé.** (Conflict never ends in the world.)")
+    
+    elif language == "Swahili":
+        st.subheader("Swahili (East Africa)")
+        st.write("👋 Hello: **Hujambo**")
+        st.write("🙏 Thank you: **Asante**")
+        st.write("💡 Proverb: **Haraka haraka haina baraka.** (Hurry hurry has no blessings.)")
+    
+    elif language == "Hausa":
+        st.subheader("Hausa (West Africa)")
+        st.write("👋 Hello: **Sannu**")
+        st.write("🙏 Thank you: **Nagode**")
+        st.write("💡 Proverb: **Komai nisan jifa, ƙasa zai dawo.** (No matter how far you throw it, it will land on the ground.)")
+    
+    elif language == "Zulu":
+        st.subheader("Zulu (South Africa)")
+        st.write("👋 Hello: **Sawubona**")
+        st.write("🙏 Thank you: **Ngiyabonga**")
+        st.write("💡 Proverb: **Umuntu ngumuntu ngabantu.** (A person is a person through other people.)")
+    
+    elif language == "Igbo":
+        st.subheader("Igbo (Nigeria)")
+        st.write("👋 Hello: **Kedu**")
+        st.write("🙏 Thank you: **Imela**")
+        st.write("💡 Proverb: **Otu osisi adịghị eme ọhịa.** (One tree does not make a forest.)")
+
 elif selected == "About":
     st.title("ℹ️ About This App")
     st.write("""
         This app is designed to showcase African culture through stories, folktales, 
-        proverbs, and history. Users can contribute their own stories and even 
-        test their knowledge through a fun quiz!
+        proverbs, history, and languages. Users can contribute their own stories, 
+        learn simple African language phrases, and test their knowledge with a quiz!
     """)
