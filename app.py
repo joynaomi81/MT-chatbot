@@ -63,7 +63,7 @@ def metadata_page(username):
 
 
 # -----------------------------
-# Curation Page (No user data shown)
+# Curation Page (No user data shown, with Next button)
 # -----------------------------
 def curation_page(username):
     st.subheader("📦 Taboo Curation")
@@ -76,7 +76,10 @@ def curation_page(username):
 
     curated_count = len(user_data["curations"])
 
-    with st.form("curation_form"):
+    if "entry_saved" not in st.session_state:
+        st.session_state.entry_saved = False
+
+    with st.form("curation_form", clear_on_submit=st.session_state.entry_saved):
         taboo = st.text_input("Enter Taboo")
         meaning = st.text_area("Enter Meaning of the Taboo")
         label = st.text_input("Enter Label (e.g., taboo)")
@@ -93,9 +96,16 @@ def curation_page(username):
                 all_data[username] = user_data
                 save_data(all_data)
                 st.success("✅ Entry saved successfully!")
-                st.rerun()
+                st.session_state.entry_saved = True
             else:
                 st.error("⚠️ Please fill in all fields before saving.")
+                st.session_state.entry_saved = False
+
+    # Show Next button if entry was saved
+    if st.session_state.entry_saved:
+        if st.button("➡️ Next"):
+            st.session_state.entry_saved = False
+            st.rerun()
 
 
 # -----------------------------
