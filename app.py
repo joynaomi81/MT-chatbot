@@ -1,6 +1,4 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime
 import json
 import os
 
@@ -10,248 +8,89 @@ import os
 ADMIN_PASSWORD = st.secrets["admin"]["password"]
 DATA_FILE = "user_progress.json"
 
+
 # -----------------------------
-# Helpers for Saving/Loading
+# Helpers
 # -----------------------------
-def load_user_progress():
+def load_data():
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
+        with open(DATA_FILE, "r") as f:
             return json.load(f)
     return {}
 
-def save_user_progress(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
 
 # -----------------------------
-# Metadata Page
+# Pages
 # -----------------------------
-def metadata_page(username):
-    st.subheader("📝 User Metadata")
+def login_page():
+    st.title("🔐 Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-    all_progress = load_user_progress()
-    user_data = all_progress.get(username, {})
-    metadata = user_data.get("metadata", {})
-
-    name = st.text_input("Full Name", metadata.get("name", ""))
-    sex = st.selectbox(
-        "Sex", ["Male", "Female", "Other"],
-        index=["Male", "Female", "Other"].index(metadata.get("sex", "Male"))
-    )
-    age = st.number_input("Age", min_value=10, max_value=120, value=metadata.get("age", 18))
-    gmail = st.text_input("Gmail", metadata.get("gmail", ""))
-    country = st.text_input("Country", metadata.get("country", ""))
-
-    if st.button("Save Metadata"):
-        user_data["metadata"] = {
-            "name": name,
-            "sex": sex,
-            "age": age,
-            "gmail": gmail,
-            "country": country
-        }
-        all_progress[username] = user_data
-        save_user_progress(all_progress)
-        st.success("✅ Metadata saved successfully!")
-
-        # Auto move to Curation page
-        st.session_state.page = "Curate"
-        st.rerun()
-
-# -----------------------------
-# Curation Page (self-input)
-# -----------------------------
-def curation_page(username):
-    st.subheader("🌍 Taboo Data Curation")
-
-    all_progress = load_user_progress()
-
-    if username not in all_progress:
-        all_progress[username] = {
-            "index": 0,
-            "curations": {},
-            "metadata": {},
-        }
-
-    user_data = all_progress[username]
-
-    # Show progress
-    curated_count = len(user_data.get("curations", {}))
-    st.info(f"📊 You have submitted {curated_count} taboo items.")
-
-    # Three boxes
-    taboo_text = st.text_area("✍️ Taboo", key=f"taboo_{username}_{curated_count}")
-    meaning_text = st.text_area("💡 Meaning of the Taboo", key=f"meaning_{username}_{curated_count}")
-    label_text = st.text_input("🏷️ Label", "taboo", key=f"label_{username}_{curated_count}")
-
-    if st.button("Submit Taboo Data"):
-        if taboo_text.strip() == "" or meaning_text.strip() == "" or label_text.strip() == "":
-            st.warning("⚠️ Please fill in all three fields before submitting.")
-        else:
-            user_data["curations"][str(curated_count + 1)] = {
-                "Taboo": taboo_text.strip(),
-                "Meaning": meaning_text.strip(),
-                "Label": label_text.strip(),
-                "Timestamp": datetime.now().isoformat()
-            }
-            all_progress[username] = user_data
-            save_user_progress(all_progress)
-            st.success("✅ Entry submitted!")
+    if st.button("Login"):
+        if password == ADMIN_PASSWORD:
+            st.session_state["logged_in"] = True
+            st.session_state["username"] = username
+            st.success("✅ Login successful!")
             st.rerun()
+        else:
+            st.error("❌ Invalid password")
 
-    # Display submitted taboo entries
-    if user_data.get("curations"):
-        st.subheader("📜 Your Submitted Taboos")
-        df = pd.DataFrame(user_data["curations"]).T
-        st.dataframe(df)
 
-# -----------------------------
-# Admin Page
-# -----------------------------
-def admin_page():
-    st.subheader("🛡️ Admin Dashboard")
+def curation_page(username):
+    st.subheader("📦 Taboo Curation")
 
-    if "admin_logged_in" not in st.session_state:
-        st.session_state.admin_logged_in = False
+    # Load user data
+    all_data = load_data()
+    user_data = all_data.get(username, {})
 
-    if not st.session_state.admin_logged_in:
-        password = st.text_input("Enter Admin Password", type="password")
-        if st.button("Login as Admin"):
-            if password == ADMIN_PASSWORD:
-                st.session_state.admin_logged_in = True
-                st.success("✅ Welcome, Admin!")
+    # Ensure "curations" exists
+    if "curations" not in user_data:
+        user_data["curations"] = {}
+
+    # Track how many entries are there
+    curated_count = len(user_data["curations"])
+
+    with st.form("curation_form"):
+        taboo = st.text_input("Enter Taboo")
+        meaning = st.text_area("Enter Meaning of the Taboo")
+        label = st.text_input("Enter Label (e.g., taboo)")
+
+        submitted = st.form_submit_button("Save")
+        if submitted:
+            if taboo and meaning and label:
+                user_data["curations"][str(curated_count + 1)] = {
+                    "taboo": taboo,
+                    "meaning": meaning,
+                    "label": label
+                }
+                all_data[username] = user_data
+                save_data(all_data)
+                st.success("✅ Entry saved successfully!")
                 st.rerun()
             else:
-                st.error("❌ Incorrect password.")
-        return
+                st.error("⚠️ Please fill in all fields before saving.")
 
-    data = load_user_progress()
-    if not data:
-        st.info("No user data yet.")
-        return
+    # Show user’s curated data
+    if user_data["curations"]:
+        st.write("### Your Curated Taboos")
+        st.json(user_data["curations"])
 
-    progress_data = []
-    metadata_rows = []
-    curation_rows = []
 
-    for user, details in data.items():
-        curations = details.get("curations", {})
-        metadata = details.get("metadata", {})
-
-        progress_data.append({
-            "User": user,
-            "Completed": len(curations),
-        })
-
-        metadata_rows.append({
-            "User": user,
-            "Name": metadata.get("name", ""),
-            "Sex": metadata.get("sex", ""),
-            "Age": metadata.get("age", ""),
-            "Gmail": metadata.get("gmail", ""),
-            "Country": metadata.get("country", "")
-        })
-
-        for idx, entry in curations.items():
-            curation_rows.append({
-                "User": user,
-                "Index": idx,
-                "Taboo": entry["Taboo"],
-                "Meaning": entry["Meaning"],
-                "Label": entry["Label"],
-                "Timestamp": entry["Timestamp"]
-            })
-
-    if progress_data:
-        st.subheader("📊 User Progress Overview")
-        st.dataframe(pd.DataFrame(progress_data))
-
-    if metadata_rows:
-        st.subheader("👤 User Metadata")
-        metadata_df = pd.DataFrame(metadata_rows)
-        st.dataframe(metadata_df)
-        st.download_button(
-            "📥 Download Metadata (CSV)",
-            metadata_df.to_csv(index=False).encode("utf-8"),
-            "user_metadata.csv",
-            "text/csv"
-        )
-
-    if curation_rows:
-        st.subheader("📜 Taboo Data")
-        curation_df = pd.DataFrame(curation_rows)
-        st.dataframe(curation_df)
-        st.download_button(
-            "📥 Download Taboo Data (CSV)",
-            curation_df.to_csv(index=False).encode("utf-8"),
-            "taboo_data.csv",
-            "text/csv"
-        )
-
-# -----------------------------
-# Main
-# -----------------------------
 def main():
-    st.title("🌍 Taboo Data Curation Platform")
-
-    if "username" not in st.session_state:
-        st.session_state.username = None
     if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-    if "page" not in st.session_state:
-        st.session_state.page = "Login"
+        st.session_state["logged_in"] = False
 
-    menu = ["Login", "Metadata", "Curate", "Admin", "Refresh", "About"]
-    choice = st.sidebar.selectbox("Menu", menu, index=menu.index(st.session_state.page))
-    st.session_state.page = choice
+    if not st.session_state["logged_in"]:
+        login_page()
+    else:
+        curation_page(st.session_state["username"])
 
-    if st.session_state.page == "Login":
-        if not st.session_state.logged_in:
-            username = st.text_input("Enter your username")
-            if st.button("Login"):
-                if username.strip():
-                    st.session_state.username = username.strip()
-                    st.session_state.logged_in = True
-                    st.success(f"🎉 Welcome, {username}!")
-                    st.session_state.page = "Metadata"
-                    st.rerun()
-                else:
-                    st.error("Please enter a valid username.")
-        else:
-            st.info(f"✅ Logged in as {st.session_state.username}")
-            if st.button("Next →"):
-                st.session_state.page = "Metadata"
-                st.rerun()
-
-    elif st.session_state.page == "Metadata":
-        if st.session_state.logged_in:
-            metadata_page(st.session_state.username)
-        else:
-            st.warning("Please login first.")
-
-    elif st.session_state.page == "Curate":
-        if st.session_state.logged_in:
-            curation_page(st.session_state.username)
-        else:
-            st.warning("Please login first.")
-
-    elif st.session_state.page == "Admin":
-        admin_page()
-
-    elif st.session_state.page == "Refresh":
-        st.session_state.clear()
-        st.success("🔄 App refreshed.")
-        st.rerun()
-
-    elif st.session_state.page == "About":
-        st.subheader("ℹ️ About This App")
-        st.write("""
-        This is a **Taboo Data Curation Web App** built with Streamlit.  
-        - Users log in, provide metadata, and curate taboo data in **three fields**: Taboo, Meaning, and Label.  
-        - Progress is saved so they can continue anytime.  
-        - Admin can log in securely, monitor user progress, and download both **metadata** and **taboo data** separately.  
-        - Built for collaborative cultural resource creation 🌍.
-        """)
 
 if __name__ == "__main__":
     main()
