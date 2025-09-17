@@ -10,8 +10,6 @@ import os
 ADMIN_PASSWORD = st.secrets["admin"]["password"]
 DATA_FILE = "user_progress.json"
 
-
-
 # -----------------------------
 # Helpers for Saving/Loading
 # -----------------------------
@@ -21,11 +19,9 @@ def load_user_progress():
             return json.load(f)
     return {}
 
-
 def save_user_progress(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-
 
 # -----------------------------
 # Metadata Page
@@ -61,7 +57,6 @@ def metadata_page(username):
         # Auto move to Curation page
         st.session_state.page = "Curate"
         st.rerun()
-
 
 # -----------------------------
 # Curation Page (self-input)
@@ -109,7 +104,6 @@ def curation_page(username):
         st.subheader("📜 Your Submitted Taboos")
         df = pd.DataFrame(user_data["curations"]).T
         st.dataframe(df)
-
 
 # -----------------------------
 # Admin Page
@@ -194,7 +188,6 @@ def admin_page():
             "text/csv"
         )
 
-
 # -----------------------------
 # Main
 # -----------------------------
@@ -259,7 +252,6 @@ def main():
         - Admin can log in securely, monitor user progress, and download both **metadata** and **taboo data** separately.  
         - Built for collaborative cultural resource creation 🌍.
         """)
-
 
 if __name__ == "__main__":
     main()
