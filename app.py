@@ -97,15 +97,7 @@ def curation_page(username):
             else:
                 st.error("⚠️ Please fill in all fields before saving.")
 
-    if user_data["curations"]:
-        st.write("### 📜 Your Curated Taboos")
-        records = [{"ID": k, **v} for k, v in user_data["curations"].items()]
-        st.dataframe(records, use_container_width=True)
-
-        with st.expander("🔎 Raw Data (JSON)"):
-            st.json(user_data["curations"])
-    else:
-        st.info("ℹ️ No taboos curated yet. Add your first entry above!")
+    
 
 
 # -----------------------------
