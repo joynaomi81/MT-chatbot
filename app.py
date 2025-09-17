@@ -63,7 +63,7 @@ def metadata_page(username):
 
 
 # -----------------------------
-# Curation Page
+# Curation Page (No user data shown)
 # -----------------------------
 def curation_page(username):
     st.subheader("📦 Taboo Curation")
@@ -96,15 +96,6 @@ def curation_page(username):
                 st.rerun()
             else:
                 st.error("⚠️ Please fill in all fields before saving.")
-
-    if user_data["curations"]:
-        records = [{"ID": k, **v} for k, v in user_data["curations"].items()]
-        st.dataframe(records, use_container_width=True)
-
-        with st.expander("🔎 Raw Data (JSON)"):
-            st.json(user_data["curations"])
-    else:
-        st.info("ℹ️ No taboos curated yet. Add your first entry above!")
 
 
 # -----------------------------
@@ -251,7 +242,7 @@ def main():
         st.write("""
         This is a **Taboo Data Curation Web App** built with Streamlit.  
         - Users log in, provide metadata, and curate taboo data in **three fields**: Taboo, Meaning, and Label.  
-        - Progress is saved so they can continue anytime.  
+        - Data is stored securely and **only Admin can view/download it**.  
         - Admin can log in securely, monitor user progress, and download both **metadata** and **taboo data** separately.  
         - Built for collaborative cultural resource creation 🌍.
         """)
