@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import os
 
-DATA_PATH = "dataset.csv"
+DATA_PATH = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/refs/heads/main/healthcare_yoruba%20(1).csv?token=GHSAT0AAAAAADIBOALWBXKNLZLGUPO3LCTI2GQR4LQ"
 
 # Load dataset
 if os.path.exists(DATA_PATH):
     df = pd.read_csv(DATA_PATH)
 else:
-    st.error("https://raw.githubusercontent.com/joynaomi81/Medical-Terminologies/refs/heads/main/healthcare_yoruba%20.csv?token=GHSAT0AAAAAADIBOALWVG4YXENASBWRBJ5W2GQRQ3A")
+    st.error("Dataset not found! Upload your CSV first.")
     st.stop()
 
 # Add annotation columns if not exist
@@ -84,7 +84,7 @@ if menu == "Annotate Data":
 
 # --- Progress Dashboard ---
 elif menu == "Progress Dashboard":
-    st.title("📈 Annotation ")
+    st.title("📈 Annotation Progress")
 
     total = len(df)
     done = (df["prompt_status"] != "Unchecked").sum()
