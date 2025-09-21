@@ -1,251 +1,107 @@
 import streamlit as st
 import pandas as pd
-import json
 import os
-from datetime import datetime
 
-# -----------------------------
-# Config (using secrets.toml)
-# -----------------------------
-ADMIN_PASSWORD = st.secrets["admin"]["password"]
-DATA_FILE = "user_progress.json"
+DATA_PATH = "dataset.csv"
 
+# Load dataset
+if os.path.exists(DATA_PATH):
+    df = pd.read_csv(DATA_PATH)
+else:
+    st.error("https://raw.githubusercontent.com/joynaomi81/Medical-Terminologies/refs/heads/main/healthcare_yoruba%20.csv?token=GHSAT0AAAAAADIBOALWVG4YXENASBWRBJ5W2GQRQ3A")
+    st.stop()
 
-# -----------------------------
-# Helpers for Saving/Loading
-# -----------------------------
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+# Add annotation columns if not exist
+for col in ["corrected_yoruba_prompt", "corrected_yoruba_completion",
+            "prompt_status", "completion_status", "annotator"]:
+    if col not in df.columns:
+        if col in ["prompt_status", "completion_status"]:
+            df[col] = "Unchecked"
+        else:
+            df[col] = ""
 
+# --- Simple User Login ---
+if "user" not in st.session_state:
+    st.session_state["user"] = None
 
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+if st.session_state["user"] is None:
+    st.sidebar.title("🔑 Login")
+    username = st.sidebar.text_input("Enter your name:")
+    if st.sidebar.button("Login"):
+        if username.strip():
+            st.session_state["user"] = username.strip()
+            st.success(f"Welcome, {st.session_state['user']}!")
+        else:
+            st.warning("Please enter a valid name.")
+    st.stop()
 
+# --- Sidebar Menu ---
+st.sidebar.title("📌 Menu")
+menu = st.sidebar.radio(
+    "Choose a page:",
+    ["Annotate Data", "Progress Dashboard", "User Info"]
+)
 
-# -----------------------------
-# Metadata Page
-# -----------------------------
-def metadata_page(username):
-    st.subheader("📝 User Metadata")
+# --- Annotation Page ---
+if menu == "Annotate Data":
+    st.title("📊 Data Annotation Tool")
 
-    all_data = load_data()
-    user_data = all_data.get(username, {})
-    metadata = user_data.get("metadata", {})
+    # Navigation
+    index = st.number_input("Go to row:", min_value=0, max_value=len(df)-1, value=0, step=1)
+    row = df.iloc[index]
 
-    name = st.text_input("Full Name", metadata.get("name", ""))
-    sex = st.selectbox(
-        "Sex", ["Male", "Female", "Other"],
-        index=["Male", "Female", "Other"].index(metadata.get("sex", "Male"))
-    )
-    age = st.number_input("Age", min_value=10, max_value=120, value=metadata.get("age", 18))
-    gmail = st.text_input("Gmail", metadata.get("gmail", ""))
-    country = st.text_input("Country", metadata.get("country", ""))
+    st.write(f"### Row {index}")
+    st.write("**English Prompt:**")
+    st.info(row["english_prompt"])
 
-    if st.button("Submit Metadata"):
-        user_data["metadata"] = {
-            "name": name.strip(),
-            "sex": sex,
-            "age": age,
-            "gmail": gmail.strip(),
-            "country": country.strip()
-        }
-        all_data[username] = user_data
-        save_data(all_data)
-        st.success("✅ Metadata submitted successfully!")
+    # Yoruba prompt annotation
+    st.write("**Yoruba Prompt:**")
+    yoruba_prompt = st.text_area("Edit Yoruba Prompt if needed:", 
+                                 row["corrected_yoruba_prompt"] or row["yoruba_prompt"], height=100)
+    prompt_status = st.radio("Prompt Status:", ["Correct", "Incorrect"], 
+                             index=0 if row["prompt_status"]=="Correct" else 1)
 
-        # Auto move to Curation page
-        st.session_state.page = "Curate"
+    # English completion
+    st.write("**English Completion:**")
+    st.info(row["english_completion"])
+
+    # Yoruba completion annotation
+    st.write("**Yoruba Completion:**")
+    yoruba_completion = st.text_area("Edit Yoruba Completion if needed:", 
+                                     row["corrected_yoruba_completion"] or row["yoruba_completion"], height=100)
+    completion_status = st.radio("Completion Status:", ["Correct", "Incorrect"], 
+                                 index=0 if row["completion_status"]=="Correct" else 1)
+
+    # Save edits
+    if st.button("💾 Save Annotation"):
+        df.at[index, "corrected_yoruba_prompt"] = yoruba_prompt
+        df.at[index, "prompt_status"] = prompt_status
+        df.at[index, "corrected_yoruba_completion"] = yoruba_completion
+        df.at[index, "completion_status"] = completion_status
+        df.at[index, "annotator"] = st.session_state["user"]
+        df.to_csv(DATA_PATH, index=False)
+        st.success(f"Row {index} saved by {st.session_state['user']}!")
+
+# --- Progress Dashboard ---
+elif menu == "Progress Dashboard":
+    st.title("📈 Annotation ")
+
+    total = len(df)
+    done = (df["prompt_status"] != "Unchecked").sum()
+    st.metric("Total Rows", total)
+    st.metric("Annotated", done)
+    st.metric("Remaining", total - done)
+
+    st.progress(done / total)
+
+    st.write("### Per User Progress")
+    progress_table = df.groupby("annotator")["prompt_status"].apply(lambda x: (x!="Unchecked").sum())
+    st.table(progress_table)
+
+# --- User Info Page ---
+elif menu == "User Info":
+    st.title("👤 User Info")
+    st.write(f"Logged in as: **{st.session_state['user']}**")
+    if st.button("Logout"):
+        st.session_state["user"] = None
         st.rerun()
-
-
-# -----------------------------
-# Curation Page (auto clear form after submit)
-# -----------------------------
-def curation_page(username):
-    st.subheader("📦 Taboo Curation")
-
-    all_data = load_data()
-    user_data = all_data.get(username, {})
-
-    if "curations" not in user_data:
-        user_data["curations"] = {}
-
-    curated_count = len(user_data["curations"])
-
-    with st.form("curation_form", clear_on_submit=True):
-        taboo = st.text_input("Enter Taboo")
-        meaning = st.text_area("Enter Meaning of the Taboo")
-        label = st.text_input("Enter Label (e.g., taboo)")
-
-        submitted = st.form_submit_button("Submit")
-        if submitted:
-            if taboo and meaning and label:
-                user_data["curations"][str(curated_count + 1)] = {
-                    "taboo": taboo.strip(),
-                    "meaning": meaning.strip(),
-                    "label": label.strip(),
-                    "timestamp": datetime.now().isoformat()
-                }
-                all_data[username] = user_data
-                save_data(all_data)
-                st.success("✅ Entry submitted successfully!")
-            else:
-                st.error("⚠️ Please fill in all fields before submitting.")
-
-
-# -----------------------------
-# Admin Page
-# -----------------------------
-def admin_page():
-    st.subheader("🛡️ Admin Dashboard")
-
-    if "admin_logged_in" not in st.session_state:
-        st.session_state.admin_logged_in = False
-
-    if not st.session_state.admin_logged_in:
-        password = st.text_input("Enter Admin Password", type="password")
-        if st.button("Login as Admin"):
-            if password == ADMIN_PASSWORD:
-                st.session_state.admin_logged_in = True
-                st.success("✅ Welcome, Admin!")
-                st.rerun()
-            else:
-                st.error("❌ Incorrect password.")
-        return
-
-    data = load_data()
-    if not data:
-        st.info("No user data yet.")
-        return
-
-    progress_data = []
-    metadata_rows = []
-    curation_rows = []
-
-    for user, details in data.items():
-        curations = details.get("curations", {})
-        metadata = details.get("metadata", {})
-
-        progress_data.append({
-            "User": user,
-            "Completed": len(curations),
-        })
-
-        metadata_rows.append({
-            "User": user,
-            "Name": metadata.get("name", ""),
-            "Sex": metadata.get("sex", ""),
-            "Age": metadata.get("age", ""),
-            "Gmail": metadata.get("gmail", ""),
-            "Country": metadata.get("country", "")
-        })
-
-        for idx, entry in curations.items():
-            curation_rows.append({
-                "User": user,
-                "Index": idx,
-                "Taboo": entry["taboo"],
-                "Meaning": entry["meaning"],
-                "Label": entry["label"],
-                "Timestamp": entry["timestamp"]
-            })
-
-    if progress_data:
-        st.subheader("📊 User Progress Overview")
-        st.dataframe(pd.DataFrame(progress_data))
-
-    if metadata_rows:
-        st.subheader("👤 User Metadata")
-        metadata_df = pd.DataFrame(metadata_rows)
-        st.dataframe(metadata_df)
-        st.download_button(
-            "📥 Download Metadata (CSV)",
-            metadata_df.to_csv(index=False).encode("utf-8"),
-            "user_metadata.csv",
-            "text/csv"
-        )
-
-    if curation_rows:
-        st.subheader("📜 Taboo Data")
-        curation_df = pd.DataFrame(curation_rows)
-        st.dataframe(curation_df)
-        st.download_button(
-            "📥 Download Taboo Data (CSV)",
-            curation_df.to_csv(index=False).encode("utf-8"),
-            "taboo_data.csv",
-            "text/csv"
-        )
-
-
-# -----------------------------
-# Main App
-# -----------------------------
-def main():
-    st.title("🌍 Taboo Data Curation Platform")
-
-    if "username" not in st.session_state:
-        st.session_state.username = None
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-    if "page" not in st.session_state:
-        st.session_state.page = "Login"
-
-    menu = ["Login", "Metadata", "Curate", "Admin", "Refresh", "About"]
-    choice = st.sidebar.selectbox("Menu", menu, index=menu.index(st.session_state.page))
-    st.session_state.page = choice
-
-    if st.session_state.page == "Login":
-        if not st.session_state.logged_in:
-            username = st.text_input("Enter your username")
-            if st.button("Login"):
-                if username.strip():
-                    st.session_state.username = username.strip()
-                    st.session_state.logged_in = True
-                    st.success(f"🎉 Welcome, {username}!")
-                    st.session_state.page = "Metadata"
-                    st.rerun()
-                else:
-                    st.error("Please enter a valid username.")
-        else:
-            st.info(f"✅ Logged in as {st.session_state.username}")
-            if st.button("Next →"):
-                st.session_state.page = "Metadata"
-                st.rerun()
-
-    elif st.session_state.page == "Metadata":
-        if st.session_state.logged_in:
-            metadata_page(st.session_state.username)
-        else:
-            st.warning("Please login first.")
-
-    elif st.session_state.page == "Curate":
-        if st.session_state.logged_in:
-            curation_page(st.session_state.username)
-        else:
-            st.warning("Please login first.")
-
-    elif st.session_state.page == "Admin":
-        admin_page()
-
-    elif st.session_state.page == "Refresh":
-        st.session_state.clear()
-        st.success("🔄 App refreshed.")
-        st.rerun()
-
-    elif st.session_state.page == "About":
-        st.subheader("ℹ️ About This App")
-        st.write("""
-        This is a **Taboo Data Curation Web App** built with Streamlit.  
-        - Users log in, provide metadata, and curate taboo data in **three fields**: Taboo, Meaning, and Label.  
-        - Data is stored securely and **only Admin can view/download it**.  
-        - Admin can log in securely, monitor user progress, and download both **metadata** and **taboo data** separately.  
-        - Built for collaborative cultural resource creation 🌍.
-        """)
-
-
-if __name__ == "__main__":
-    main()
