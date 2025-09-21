@@ -1,30 +1,16 @@
 import streamlit as st
 import pandas as pd
 
-# GitHub raw dataset URL
-DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/refs/heads/main/healthcare_yoruba%20(1).csv"
+# Dataset URL (from your repo)
+DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/main/healthcare_yoruba%20(1).csv"
 
-st.set_page_config(page_title="Medical Terminologies Annotation", layout="wide")
+st.set_page_config(page_title="MT Chatbot Annotation Tool", layout="wide")
 
-# --- Load dataset ---
 @st.cache_data
 def load_data():
-    try:
-        return pd.read_csv(DATA_URL)
-    except Exception as e:
-        st.error(f"❌ Could not load dataset: {e}")
-        st.stop()
+    return pd.read_csv(DATA_URL)
 
 df = load_data()
-
-# --- Add annotation columns if missing ---
-for col in ["corrected_yoruba_prompt", "corrected_yoruba_completion",
-            "prompt_status", "completion_status", "annotator"]:
-    if col not in df.columns:
-        if col in ["prompt_status", "completion_status"]:
-            df[col] = "Unchecked"
-        else:
-            df[col] = ""
 
 # --- Simple User Login ---
 if "user" not in st.session_state:
@@ -52,63 +38,48 @@ menu = st.sidebar.radio(
 if menu == "Annotate Data":
     st.title("📊 Data Annotation Tool")
 
-    # Navigation
     index = st.number_input("Go to row:", min_value=0, max_value=len(df)-1, value=0, step=1)
     row = df.iloc[index]
 
     st.write(f"### Row {index}")
     st.write("**English Prompt:**")
-    st.info(row["prompt"])  # <-- changed to match your columns
+    st.info(row["prompt"])
 
-    # Yoruba prompt annotation
-    st.write("**Yoruba Prompt:**")
-    yoruba_prompt = st.text_area("Edit Yoruba Prompt if needed:", 
-                                 row["corrected_yoruba_prompt"] or row["prompt_translated"], height=100)
-    prompt_status = st.radio("Prompt Status:", ["Correct", "Incorrect"], 
-                             index=0 if row["prompt_status"]=="Correct" else 1)
+    # Yoruba prompt
+    yoruba_prompt = st.text_area("Edit Yoruba Prompt if needed:", row["prompt_translated"], height=100)
 
-    # English completion
     st.write("**English Completion:**")
-    st.info(row["completion"])  # <-- changed to match your columns
+    st.info(row["completion"])
 
-    # Yoruba completion annotation
-    st.write("**Yoruba Completion:**")
-    yoruba_completion = st.text_area("Edit Yoruba Completion if needed:", 
-                                     row["corrected_yoruba_completion"] or row["completion_translated"], height=100)
-    completion_status = st.radio("Completion Status:", ["Correct", "Incorrect"], 
-                                 index=0 if row["completion_status"]=="Correct" else 1)
+    # Yoruba completion
+    yoruba_completion = st.text_area("Edit Yoruba Completion if needed:", row["completion_translated"], height=100)
 
     # Save edits locally
     if st.button("💾 Save Annotation"):
-        df.at[index, "corrected_yoruba_prompt"] = yoruba_prompt
-        df.at[index, "prompt_status"] = prompt_status
-        df.at[index, "corrected_yoruba_completion"] = yoruba_completion
-        df.at[index, "completion_status"] = completion_status
+        df.at[index, "prompt_translated"] = yoruba_prompt
+        df.at[index, "completion_translated"] = yoruba_completion
         df.at[index, "annotator"] = st.session_state["user"]
         st.success(f"Row {index} saved by {st.session_state['user']}!")
 
-    # Download updated dataset
-    st.download_button(
-        "⬇️ Download Updated CSV",
-        df.to_csv(index=False),
-        file_name="annotated_medical_terms.csv"
-    )
+    # Download updated CSV
+    st.download_button("⬇️ Download Updated CSV", df.to_csv(index=False), file_name="annotated_mt.csv")
 
 # --- Progress Dashboard ---
 elif menu == "Progress Dashboard":
     st.title("📈 Annotation Progress")
 
     total = len(df)
-    done = (df["prompt_status"] != "Unchecked").sum()
+    done = df["prompt_translated"].notna().sum() + df["completion_translated"].notna().sum()
     st.metric("Total Rows", total)
     st.metric("Annotated", done)
     st.metric("Remaining", total - done)
 
-    st.progress(done / total)
+    st.progress(done / total if total > 0 else 0)
 
-    st.write("### Per User Progress")
-    progress_table = df.groupby("annotator")["prompt_status"].apply(lambda x: (x!="Unchecked").sum())
-    st.table(progress_table)
+    if "annotator" in df.columns:
+        st.write("### Per User Progress")
+        progress_table = df.groupby("annotator")["prompt_translated"].apply(lambda x: x.notna().sum())
+        st.table(progress_table)
 
 # --- User Info Page ---
 elif menu == "User Info":
