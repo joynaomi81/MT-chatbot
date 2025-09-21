@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Dataset URL (from your repo)
-DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/main/healthcare_yoruba%20(1).csv"
+DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/refs/heads/main/healthcare_yoruba%20(1).csv?token=GHSAT0AAAAAADIBOALX3NWSYB622MXW7RPO2GQSF6A"
 
 st.set_page_config(page_title="MT Chatbot Annotation Tool", layout="wide")
 
