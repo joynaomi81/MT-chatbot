@@ -1,17 +1,23 @@
 import streamlit as st
 import pandas as pd
-import os
 
-DATA_PATH = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/refs/heads/main/healthcare_yoruba%20(1).csv?token=GHSAT0AAAAAADIBOALWBXKNLZLGUPO3LCTI2GQR4LQ"
+# GitHub raw dataset URL
+DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/refs/heads/main/healthcare_yoruba%20(1).csv"
 
-# Load dataset
-if os.path.exists(DATA_PATH):
-    df = pd.read_csv(DATA_PATH)
-else:
-    st.error("Dataset not found! Upload your CSV first.")
-    st.stop()
+st.set_page_config(page_title="Medical Terminologies Annotation", layout="wide")
 
-# Add annotation columns if not exist
+# --- Load dataset ---
+@st.cache_data
+def load_data():
+    try:
+        return pd.read_csv(DATA_URL)
+    except Exception as e:
+        st.error(f"❌ Could not load dataset: {e}")
+        st.stop()
+
+df = load_data()
+
+# --- Add annotation columns if missing ---
 for col in ["corrected_yoruba_prompt", "corrected_yoruba_completion",
             "prompt_status", "completion_status", "annotator"]:
     if col not in df.columns:
@@ -52,35 +58,41 @@ if menu == "Annotate Data":
 
     st.write(f"### Row {index}")
     st.write("**English Prompt:**")
-    st.info(row["english_prompt"])
+    st.info(row["prompt"])  # <-- changed to match your columns
 
     # Yoruba prompt annotation
     st.write("**Yoruba Prompt:**")
     yoruba_prompt = st.text_area("Edit Yoruba Prompt if needed:", 
-                                 row["corrected_yoruba_prompt"] or row["yoruba_prompt"], height=100)
+                                 row["corrected_yoruba_prompt"] or row["prompt_translated"], height=100)
     prompt_status = st.radio("Prompt Status:", ["Correct", "Incorrect"], 
                              index=0 if row["prompt_status"]=="Correct" else 1)
 
     # English completion
     st.write("**English Completion:**")
-    st.info(row["english_completion"])
+    st.info(row["completion"])  # <-- changed to match your columns
 
     # Yoruba completion annotation
     st.write("**Yoruba Completion:**")
     yoruba_completion = st.text_area("Edit Yoruba Completion if needed:", 
-                                     row["corrected_yoruba_completion"] or row["yoruba_completion"], height=100)
+                                     row["corrected_yoruba_completion"] or row["completion_translated"], height=100)
     completion_status = st.radio("Completion Status:", ["Correct", "Incorrect"], 
                                  index=0 if row["completion_status"]=="Correct" else 1)
 
-    # Save edits
+    # Save edits locally
     if st.button("💾 Save Annotation"):
         df.at[index, "corrected_yoruba_prompt"] = yoruba_prompt
         df.at[index, "prompt_status"] = prompt_status
         df.at[index, "corrected_yoruba_completion"] = yoruba_completion
         df.at[index, "completion_status"] = completion_status
         df.at[index, "annotator"] = st.session_state["user"]
-        df.to_csv(DATA_PATH, index=False)
         st.success(f"Row {index} saved by {st.session_state['user']}!")
+
+    # Download updated dataset
+    st.download_button(
+        "⬇️ Download Updated CSV",
+        df.to_csv(index=False),
+        file_name="annotated_medical_terms.csv"
+    )
 
 # --- Progress Dashboard ---
 elif menu == "Progress Dashboard":
