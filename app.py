@@ -41,7 +41,7 @@ menu = st.sidebar.radio(
 
 # --- Annotation Page ---
 if menu == "Annotate Data":
-    st.title("📊 Data Annotation Tool")
+    st.title("📊 Data Annotation")
 
     if "current_index" not in st.session_state:
         st.session_state["current_index"] = 0
