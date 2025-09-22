@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-# Dataset URL (from your repo)
-DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/refs/heads/main/healthcare_yoruba%20(1).csv?token=GHSAT0AAAAAADIBOALX3NWSYB622MXW7RPO2GQSF6A"
+# GitHub raw dataset URL
+DATA_URL = "https://raw.githubusercontent.com/joynaomi81/MT-chatbot/main/healthcare_yoruba%20(1).csv"
 
 st.set_page_config(page_title="MT Chatbot Annotation Tool", layout="wide")
 
@@ -45,23 +45,19 @@ if menu == "Annotate Data":
     st.write("**English Prompt:**")
     st.info(row["prompt"])
 
-    # Yoruba prompt
     yoruba_prompt = st.text_area("Edit Yoruba Prompt if needed:", row["prompt_translated"], height=100)
 
     st.write("**English Completion:**")
     st.info(row["completion"])
 
-    # Yoruba completion
     yoruba_completion = st.text_area("Edit Yoruba Completion if needed:", row["completion_translated"], height=100)
 
-    # Save edits locally
     if st.button("💾 Save Annotation"):
         df.at[index, "prompt_translated"] = yoruba_prompt
         df.at[index, "completion_translated"] = yoruba_completion
         df.at[index, "annotator"] = st.session_state["user"]
         st.success(f"Row {index} saved by {st.session_state['user']}!")
 
-    # Download updated CSV
     st.download_button("⬇️ Download Updated CSV", df.to_csv(index=False), file_name="annotated_mt.csv")
 
 # --- Progress Dashboard ---
